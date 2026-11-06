@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ---------------------------------------------------------------------------
-# cvt_fusion_comp_publisher_v2.12
+# cvt_fusion_comp_publisher_v2.13
 #
 # From Creative Video Tips (CVT)
 # Created by Chadwick  |  https://creativevideotips.com
@@ -45,7 +45,7 @@
 #      skipped or failed.
 #
 # This is the publishing engine and command-line tool; the window is
-# cvt_fusion_comp_publisher_gui_v2.12.py, which loads this file.
+# cvt_fusion_comp_publisher_gui_v2.13.py, which loads this file.
 #
 # v1.01: renumbered to match the set (the window now remembers your settings);
 #        publishing works the same.
@@ -92,12 +92,15 @@
 # v2.12: renumbered to match the set; the app is now built so it opens on older Macs
 #        (macOS 12 or later). The v2.11 app needed the newest macOS. Publishing works
 #        the same.
+# v2.13: the comp's frame size is set to match the L1 clip (a movie, or an EXR,
+#        DPX, TIFF, JPEG or PNG sequence), so a 2048 x 858 plate no longer opens
+#        in a 3840 x 2160 comp. Turn it off to keep the template's size.
 #
 # Install location: the Mac installer puts the app in /Applications; the engine
 #   also runs from a terminal (standard library only)
 # ---------------------------------------------------------------------------
 """
-cvt_fusion_comp_publisher_v2.12.py
+cvt_fusion_comp_publisher_v2.13.py
 ==================================
 
 VFX publishing utility: given a parent directory (e.g. a "shots" folder),
@@ -113,7 +116,7 @@ Example layout before running:
         SHOT_020/
         SHOT_030/
 
-After running `python3 cvt_fusion_comp_publisher_v2.12.py /project/shots`:
+After running `python3 cvt_fusion_comp_publisher_v2.13.py /project/shots`:
 
     /project/shots/
         SHOT_010/SHOT_010_v001.comp
@@ -132,17 +135,17 @@ comp with none of that baked in (Fusion then uses its live preferences at
 open time instead).
 
 Usage:
-    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots
-    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --recursive
-    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --overwrite
-    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --pattern "SHOT_*"
-    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --version v002
-    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --template ~/fusion/template.comp
-    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --no-template
-    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --dry-run
-    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --clip-tag 709
-    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --only ltx_sh120 ltx_sh130
-    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --no-loader
+    python3 cvt_fusion_comp_publisher_v2.13.py /path/to/shots
+    python3 cvt_fusion_comp_publisher_v2.13.py /path/to/shots --recursive
+    python3 cvt_fusion_comp_publisher_v2.13.py /path/to/shots --overwrite
+    python3 cvt_fusion_comp_publisher_v2.13.py /path/to/shots --pattern "SHOT_*"
+    python3 cvt_fusion_comp_publisher_v2.13.py /path/to/shots --version v002
+    python3 cvt_fusion_comp_publisher_v2.13.py /path/to/shots --template ~/fusion/template.comp
+    python3 cvt_fusion_comp_publisher_v2.13.py /path/to/shots --no-template
+    python3 cvt_fusion_comp_publisher_v2.13.py /path/to/shots --dry-run
+    python3 cvt_fusion_comp_publisher_v2.13.py /path/to/shots --clip-tag 709
+    python3 cvt_fusion_comp_publisher_v2.13.py /path/to/shots --only ltx_sh120 ltx_sh130
+    python3 cvt_fusion_comp_publisher_v2.13.py /path/to/shots --no-loader
 """
 
 from __future__ import annotations
@@ -160,7 +163,7 @@ from pathlib import Path
 
 SCRIPT_TITLE = "Blackmagic Fusion Comp Publisher"  # printed messages and window titles
 BRAND = "Creative Video Tips"
-VERSION = "2.12"                        # keep in sync with the filename, header and docstring
+VERSION = "2.13"                        # keep in sync with the filename, header and docstring
 
 
 def window_title() -> str:
@@ -422,10 +425,17 @@ def _boxes(f, start: int, end: int):
 
 
 def mov_frame_count(clip: Path) -> int:
-    """Frame count of a QuickTime/MP4 movie's first video track, read from the file.
+    """Frame count of a QuickTime/MP4 movie's first video track, read from the file."""
+    return mov_video_info(clip)[0]
 
-    Walks the boxes to the video track's sample table (stsz), where each sample
-    is one frame. Raises RuntimeError if the file has no readable video track.
+
+def mov_video_info(clip: Path) -> tuple[int, int | None, int | None]:
+    """(frames, width, height) of a QuickTime/MP4 movie's first video track, read from the file.
+
+    Walks the boxes to the video track's sample table: stsz holds the number of samples
+    (one per frame) and stsd the picture size. Width and height are None if the sample
+    description is not one this reader understands. Raises RuntimeError if the file has
+    no readable video track.
     """
     with open(clip, "rb") as f:
         f.seek(0, 2)
@@ -452,12 +462,16 @@ def mov_frame_count(clip: Path) -> int:
             stbl = next(((x, y) for k, x, y in _boxes(f, *minf) if k == b"stbl"), None)
             if stbl is None:
                 continue
+            count, width, height = 0, None, None
             for k, x, y in _boxes(f, *stbl):
                 if k == b"stsz":
                     f.seek(x + 4)
                     _sample_size, count = struct.unpack(">II", f.read(8))
-                    if count > 0:
-                        return count
+                elif k == b"stsd" and y - x >= 44:
+                    f.seek(x + 40)   # version/flags, count, then the first entry's fixed fields
+                    width, height = struct.unpack(">HH", f.read(4))
+            if count > 0:
+                return count, (width or None), (height or None)
     raise RuntimeError("no video track with frames found")
 
 
@@ -487,6 +501,159 @@ def clip_frame_count(clip: Path) -> int:
         if out.isdigit() and int(out) > 0:
             return int(out)
     raise RuntimeError("could not read the frame count")
+
+
+def _cstring(f) -> str:
+    out = bytearray()
+    while len(out) < 256:
+        ch = f.read(1)
+        if not ch or ch == b"\0":
+            break
+        out += ch
+    return out.decode("latin-1")
+
+
+def _exr_size(f) -> tuple[int, int]:
+    if f.read(4) != b"\x76\x2f\x31\x01":
+        raise ValueError("not an EXR file")
+    f.read(4)                                   # version and flags
+    found = {}
+    for _ in range(200):                        # header attributes, ended by an empty name
+        name = _cstring(f)
+        if not name:
+            break
+        kind = _cstring(f)
+        (size,) = struct.unpack("<i", f.read(4))
+        if size < 0 or size > (1 << 20):
+            raise ValueError("odd EXR header")
+        data = f.read(size)
+        if kind == "box2i" and size == 16 and name in ("dataWindow", "displayWindow"):
+            x0, y0, x1, y1 = struct.unpack("<4i", data)
+            found[name] = (x1 - x0 + 1, y1 - y0 + 1)
+    # The display window is the canvas the picture is meant for.
+    size = found.get("displayWindow") or found.get("dataWindow")
+    if not size:
+        raise ValueError("no window in the EXR header")
+    return size
+
+
+def _dpx_size(f) -> tuple[int, int]:
+    head = f.read(780)
+    if head[:4] == b"SDPX":
+        order = ">"
+    elif head[:4] == b"XPDS":
+        order = "<"
+    else:
+        raise ValueError("not a DPX file")
+    return struct.unpack(order + "II", head[772:780])
+
+
+def _tiff_size(f) -> tuple[int, int]:
+    head = f.read(8)
+    order = {b"II": "<", b"MM": ">"}.get(head[:2])
+    if order is None or struct.unpack(order + "H", head[2:4])[0] != 42:
+        raise ValueError("not a classic TIFF file")
+    f.seek(struct.unpack(order + "I", head[4:8])[0])
+    (count,) = struct.unpack(order + "H", f.read(2))
+    width = height = None
+    for _ in range(min(count, 512)):
+        tag, kind, _n = struct.unpack(order + "HHI", f.read(8))
+        raw = f.read(4)
+        value = struct.unpack(order + ("H" if kind == 3 else "I"), raw[:2] if kind == 3 else raw)[0]
+        if tag == 256:
+            width = value
+        elif tag == 257:
+            height = value
+    if not width or not height:
+        raise ValueError("no size in the TIFF")
+    return width, height
+
+
+def _png_size(f) -> tuple[int, int]:
+    head = f.read(24)
+    if head[:8] != b"\x89PNG\r\n\x1a\n" or head[12:16] != b"IHDR":
+        raise ValueError("not a PNG file")
+    return struct.unpack(">II", head[16:24])
+
+
+def _jpeg_size(f) -> tuple[int, int]:
+    data = f.read(1 << 17)
+    if data[:2] != b"\xff\xd8":
+        raise ValueError("not a JPEG file")
+    i = 2
+    while i + 9 < len(data):
+        if data[i] != 0xFF:
+            i += 1
+            continue
+        marker = data[i + 1]
+        if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7 or marker == 0xFF:
+            i += 1 if marker == 0xFF else 2
+            continue
+        if 0xC0 <= marker <= 0xCF and marker not in (0xC4, 0xC8, 0xCC):
+            height, width = struct.unpack(">HH", data[i + 5:i + 9])
+            return width, height
+        i += 2 + struct.unpack(">H", data[i + 2:i + 4])[0]
+    raise ValueError("no size in the JPEG")
+
+
+_SIZE_READERS = {".exr": _exr_size, ".dpx": _dpx_size, ".tif": _tiff_size, ".tiff": _tiff_size,
+                 ".png": _png_size, ".jpg": _jpeg_size, ".jpeg": _jpeg_size}
+
+
+def clip_size(clip: Path) -> tuple[int, int] | None:
+    """(width, height) of a clip's picture: a movie, or the first frame of an image sequence.
+
+    Read from the file's own header, with no other program. None if it can't be read.
+    """
+    try:
+        suffix = clip.suffix.lower()
+        if suffix in SEQUENCE_FORMATS:
+            with open(clip, "rb") as f:
+                width, height = _SIZE_READERS[suffix](f)
+        else:
+            _frames, width, height = mov_video_info(clip)
+        if width and height and 0 < width <= 65536 and 0 < height <= 65536:
+            return int(width), int(height)
+    except (OSError, ValueError, RuntimeError, struct.error):
+        pass
+    return None
+
+
+_KNOWN_SIZES = {(1920, 1080): "HD 1080", (3840, 2160): "Ultra HD 2160"}
+
+
+def set_frame_size(text: str, width: int, height: int) -> str:
+    """Return the comp text with its frame format set to width x height.
+
+    The size lives in Prefs.Comp.FrameFormat. The format's Name is only a label, so it
+    is "HD 1080" or "Ultra HD 2160" when the size is one of those and "Custom" otherwise.
+    The frame rate and bit depths of the template are left as they are. The guide ratio
+    follows the new picture. A template with no frame format of its own (the starter
+    template) gets one, with Fusion's usual rate.
+    """
+    name = _KNOWN_SIZES.get((width, height), "Custom")
+    ratio = "%.14g" % (width / height)
+    match = re.search(r"FrameFormat = \{[^{}]*\}", text)
+    if match:
+        block = match.group(0)
+        for pattern, value in ((r'Name = "[^"]*"', 'Name = "%s"' % name),
+                               (r"Width = \d+", "Width = %d" % width),
+                               (r"Height = \d+", "Height = %d" % height),
+                               (r"GuideRatio = [\d.]+", "GuideRatio = %s" % ratio)):
+            block = re.sub(pattern, value, block, count=1)
+        return text[:match.start()] + block + text[match.end():]
+    if "Prefs = {" in text:
+        return text    # a Prefs table without a frame format: leave it alone
+    prefs = (
+        "\tPrefs = {\n\t\tComp = {\n\t\t\tFrameFormat = {\n"
+        f'\t\t\t\tName = "{name}",\n\t\t\t\tWidth = {width},\n\t\t\t\tHeight = {height},\n'
+        f"\t\t\t\tRate = 24,\n\t\t\t\tGuideRatio = {ratio},\n"
+        "\t\t\t}\n\t\t}\n\t},\n"
+    )
+    body = text.rstrip()
+    if not body.endswith("}"):
+        return text
+    return body[:-1].rstrip() + "\n" + prefs + "}\n"
 
 
 def measure_clip(clip: Path) -> tuple[int | None, int]:
@@ -612,8 +779,10 @@ def add_loader_to_comp(
     first_frame: int | None = None,
     ext: str = ".exr",
     ref: tuple | None = None,
+    size: tuple[int, int] | None = None,
 ) -> str:
     """Return the template text with a Loader added and the ranges set.
+    If a size (width, height) is given, the comp's frame size is set to it too.
 
     The render range is the clip (start to start + frames - 1) and the working
     (global) range runs one frame further, the way Fusion sets them when you
@@ -635,6 +804,8 @@ def add_loader_to_comp(
     text = re.sub(
         r"VisibleRange = \{[^}]*\}", f"VisibleRange = {{ {start}, {end}.9999 }}", text
     )
+    if size is not None:
+        text = set_frame_size(text, size[0], size[1])
     return text
 
 
@@ -726,6 +897,7 @@ def publish_comps(
     clip_tag: str = "",
     only: set[str] | None = None,
     add_ref: bool = True,
+    match_size: bool = True,
 ) -> PublishSummary:
     """Write one comp per shot folder.
 
@@ -734,6 +906,7 @@ def publish_comps(
     clip_tag: colour-space tag to choose between L1 clips ("" = Auto).
     only: folder names to publish; None means every matching folder.
     add_ref: also add a second Loader for the shot's _ref clip, if it has one.
+    match_size: set the comp's frame size to the L1 clip's picture size.
     """
     check_name_options(version, extension)
     summary = PublishSummary()
@@ -767,6 +940,11 @@ def publish_comps(
             if clip is not None:
                 try:
                     first_frame, frames = measure_clip(clip)
+                    size = clip_size(clip) if match_size else None
+                    size_note = ""
+                    if match_size:
+                        size_note = (f"{size[0]}x{size[1]}" if size
+                                     else "size not read, kept the template's")
                     ref = None
                     ref_note = ""
                     ref_clip = find_ref_clip(folder) if add_ref else None
@@ -781,11 +959,12 @@ def publish_comps(
                     data = add_loader_to_comp(
                         content_bytes.decode("utf-8"), clip.relative_to(folder).as_posix(),
                         frames, first_frame,
-                        clip.suffix.lower(), ref,
+                        clip.suffix.lower(), ref, size,
                     ).encode("utf-8")
                     note = note.strip("; ")
                     kind = "frame sequence" if first_frame is not None else "movie"
                     note = f"{clip.name}, {frames} frames ({kind})" + (
+                        f", {size_note}" if size_note else "") + (
                         f"; {note}" if note else ""
                     ) + (f"; {ref_note}" if ref_note else "")
                 except (RuntimeError, ValueError, OSError) as exc:
@@ -881,6 +1060,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Do not add a Loader or set the frame ranges; copy the template as is.",
     )
     parser.add_argument(
+        "--no-match-size",
+        action="store_true",
+        help="Keep the template's frame size instead of matching the L1 clip's picture size.",
+    )
+    parser.add_argument(
         "--no-ref",
         action="store_true",
         help="Do not add a second Loader for a <shot>_ref reference clip.",
@@ -950,6 +1134,7 @@ def main(argv: list[str] | None = None) -> int:
         template=template,
         add_loader=not args.no_loader,
         add_ref=not args.no_ref,
+        match_size=not args.no_match_size,
         clip_tag=args.clip_tag,
         only=set(args.only) if args.only else None,
     )

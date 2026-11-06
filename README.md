@@ -14,7 +14,7 @@ later (see [License](#license)).
 
 ## Download
 
-**[BlackmagicFusionCompPublisher-2.12.pkg](https://github.com/creativevideotips/cvt-fusion-comp-publisher/releases/download/v2.12/BlackmagicFusionCompPublisher-2.12.pkg)**
+**[BlackmagicFusionCompPublisher-2.13.pkg](https://github.com/creativevideotips/cvt-fusion-comp-publisher/releases/download/v2.13/BlackmagicFusionCompPublisher-2.13.pkg)**
 is a signed and notarized installer for Apple Silicon Macs (M1 and later) running macOS 12 or later. Double-click it and it puts
 **Blackmagic Fusion Comp Publisher** in your Applications folder. It has Python and Qt inside, so
 there is nothing else to install. The [PDF guide](Blackmagic_Fusion_Comp_Publisher_Guide.pdf)
@@ -51,6 +51,10 @@ Shots/
   (`source/<shot>_L1/<shot>_L1.1001.exr`). It is loaded through Fusion's `Comp:` path map.
 - The **render range** is the clip (1001 to 1000 + frames) and the **working range** is one frame
   longer, the way Fusion sets them when you Shift-drag a Loader to the time ruler.
+- The comp's **frame size** is set to the L1 clip's picture size (for example 2048 x 858), so a
+  plate that is not HD or UHD does not open in a comp of the template's size. The size is read
+  from the clip's own header; the frame rate and bit depth stay the template's. Turn it off to keep
+  the template's size.
 - A **reference clip** (a movie or image sequence whose name ends in `_ref`, found anywhere inside
   the shot folder) goes in as a second Loader to the right of the first. It never changes the range.
 - You tick the shots to publish. A shot that already has this version's comp is left alone unless
@@ -63,14 +67,14 @@ You need Python 3.10 or later and PySide6.
 ```
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python3 cvt_fusion_comp_publisher_gui_v2.12.py
+.venv/bin/python3 cvt_fusion_comp_publisher_gui_v2.13.py
 ```
 
 The engine also runs on its own, with only the standard library:
 
 ```
-python3 cvt_fusion_comp_publisher_v2.12.py /path/to/Shots --dry-run
-python3 cvt_fusion_comp_publisher_v2.12.py --help
+python3 cvt_fusion_comp_publisher_v2.13.py /path/to/Shots --dry-run
+python3 cvt_fusion_comp_publisher_v2.13.py --help
 ```
 
 ## Build the Mac app
@@ -81,8 +85,8 @@ The installer is the Python files above, bundled with PyInstaller:
 pip install "PySide6-Essentials==6.8.3" pyinstaller
 pyinstaller --windowed --name "Blackmagic Fusion Comp Publisher" \
   --osx-bundle-identifier com.creativevideotips.fusioncomppublisher \
-  --add-data "cvt_fusion_comp_publisher_v2.12.py:." \
-  cvt_fusion_comp_publisher_gui_v2.12.py
+  --add-data "cvt_fusion_comp_publisher_v2.13.py:." \
+  cvt_fusion_comp_publisher_gui_v2.13.py
 ```
 
 Signing, notarizing and making a `.pkg` are your own steps, with your own Apple Developer ID.
