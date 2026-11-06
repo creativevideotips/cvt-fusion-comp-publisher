@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ---------------------------------------------------------------------------
-# cvt_fusion_comp_publisher_v2.11
+# cvt_fusion_comp_publisher_v2.12
 #
 # From Creative Video Tips (CVT)
 # Created by Chadwick  |  https://creativevideotips.com
@@ -45,7 +45,7 @@
 #      skipped or failed.
 #
 # This is the publishing engine and command-line tool; the window is
-# cvt_fusion_comp_publisher_gui_v2.11.py, which loads this file.
+# cvt_fusion_comp_publisher_gui_v2.12.py, which loads this file.
 #
 # v1.01: renumbered to match the set (the window now remembers your settings);
 #        publishing works the same.
@@ -89,12 +89,15 @@
 # v2.11: free software under the GNU GPL v3 or later, for anyone to use, change and
 #        share (it was for Cutting Club members only); a notice says it is not
 #        associated with Blackmagic Design. Publishing works the same.
+# v2.12: renumbered to match the set; the app is now built so it opens on older Macs
+#        (macOS 12 or later). The v2.11 app needed the newest macOS. Publishing works
+#        the same.
 #
 # Install location: the Mac installer puts the app in /Applications; the engine
 #   also runs from a terminal (standard library only)
 # ---------------------------------------------------------------------------
 """
-cvt_fusion_comp_publisher_v2.11.py
+cvt_fusion_comp_publisher_v2.12.py
 ==================================
 
 VFX publishing utility: given a parent directory (e.g. a "shots" folder),
@@ -110,7 +113,7 @@ Example layout before running:
         SHOT_020/
         SHOT_030/
 
-After running `python3 cvt_fusion_comp_publisher_v2.11.py /project/shots`:
+After running `python3 cvt_fusion_comp_publisher_v2.12.py /project/shots`:
 
     /project/shots/
         SHOT_010/SHOT_010_v001.comp
@@ -129,17 +132,17 @@ comp with none of that baked in (Fusion then uses its live preferences at
 open time instead).
 
 Usage:
-    python3 cvt_fusion_comp_publisher_v2.11.py /path/to/shots
-    python3 cvt_fusion_comp_publisher_v2.11.py /path/to/shots --recursive
-    python3 cvt_fusion_comp_publisher_v2.11.py /path/to/shots --overwrite
-    python3 cvt_fusion_comp_publisher_v2.11.py /path/to/shots --pattern "SHOT_*"
-    python3 cvt_fusion_comp_publisher_v2.11.py /path/to/shots --version v002
-    python3 cvt_fusion_comp_publisher_v2.11.py /path/to/shots --template ~/fusion/template.comp
-    python3 cvt_fusion_comp_publisher_v2.11.py /path/to/shots --no-template
-    python3 cvt_fusion_comp_publisher_v2.11.py /path/to/shots --dry-run
-    python3 cvt_fusion_comp_publisher_v2.11.py /path/to/shots --clip-tag 709
-    python3 cvt_fusion_comp_publisher_v2.11.py /path/to/shots --only ltx_sh120 ltx_sh130
-    python3 cvt_fusion_comp_publisher_v2.11.py /path/to/shots --no-loader
+    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots
+    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --recursive
+    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --overwrite
+    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --pattern "SHOT_*"
+    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --version v002
+    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --template ~/fusion/template.comp
+    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --no-template
+    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --dry-run
+    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --clip-tag 709
+    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --only ltx_sh120 ltx_sh130
+    python3 cvt_fusion_comp_publisher_v2.12.py /path/to/shots --no-loader
 """
 
 from __future__ import annotations
@@ -157,7 +160,7 @@ from pathlib import Path
 
 SCRIPT_TITLE = "Blackmagic Fusion Comp Publisher"  # printed messages and window titles
 BRAND = "Creative Video Tips"
-VERSION = "2.11"                        # keep in sync with the filename, header and docstring
+VERSION = "2.12"                        # keep in sync with the filename, header and docstring
 
 
 def window_title() -> str:

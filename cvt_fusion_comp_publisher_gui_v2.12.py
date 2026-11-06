@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ---------------------------------------------------------------------------
-# cvt_fusion_comp_publisher_gui_v2.11
+# cvt_fusion_comp_publisher_gui_v2.12
 #
 # From Creative Video Tips (CVT)
 # Created by Chadwick  |  https://creativevideotips.com
@@ -43,7 +43,7 @@
 #   5. Double-click a result to reveal that folder in the Finder.
 #   6. Remembers your last choices for next time (Overwrite always starts off).
 #
-# Needs cvt_fusion_comp_publisher_v2.11.py in the same folder, and PySide6
+# Needs cvt_fusion_comp_publisher_v2.12.py in the same folder, and PySide6
 # (see requirements.txt; installed in ~/.venvs/fusion-tools).
 #
 # v1.01: remembers your last folder, template, pattern, extension, version tag
@@ -79,15 +79,17 @@
 #        refused with a clear message.
 # v2.11: free software under the GNU GPL v3 or later (it was for Cutting Club
 #        members only); the window is unchanged.
+# v2.12: renumbered to match the set; the app is now built so it opens on older Macs
+#        (macOS 12 or later); the window is unchanged.
 #
 # Install location: the Mac installer puts the app in /Applications; from source,
 #   run this file with Python and PySide6
 # ---------------------------------------------------------------------------
 """
-cvt_fusion_comp_publisher_gui_v2.11.py
+cvt_fusion_comp_publisher_gui_v2.12.py
 ======================================
 
-A PySide6 desktop UI for cvt_fusion_comp_publisher_v2.11.py.
+A PySide6 desktop UI for cvt_fusion_comp_publisher_v2.12.py.
 
 Point it at a parent folder (e.g. a shots directory), tick the comps you want,
 preview what would happen, then publish Fusion (.comp) files into each ticked
@@ -102,7 +104,7 @@ Publish or close the window, and filled back in next time. Overwrite is left
 out on purpose, so a new session never starts ready to replace comps.
 
 Run:
-    ~/.venvs/fusion-tools/bin/python3 cvt_fusion_comp_publisher_gui_v2.11.py
+    ~/.venvs/fusion-tools/bin/python3 cvt_fusion_comp_publisher_gui_v2.12.py
 """
 
 from __future__ import annotations
@@ -113,7 +115,7 @@ import os
 import sys
 from pathlib import Path
 
-VERSION = "2.11"                   # keep in sync with the filename, header and docstring
+VERSION = "2.12"                   # keep in sync with the filename, header and docstring
 SCRIPT_NAME = "fusion_comp_publisher"  # settings file name, no version in it
 
 

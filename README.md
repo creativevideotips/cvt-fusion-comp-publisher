@@ -14,8 +14,8 @@ later (see [License](#license)).
 
 ## Download
 
-**[BlackmagicFusionCompPublisher-2.11.pkg](https://github.com/creativevideotips/cvt-fusion-comp-publisher/releases/download/v2.11/BlackmagicFusionCompPublisher-2.11.pkg)**
-is a signed and notarized installer for Apple Silicon Macs. Double-click it and it puts
+**[BlackmagicFusionCompPublisher-2.12.pkg](https://github.com/creativevideotips/cvt-fusion-comp-publisher/releases/download/v2.12/BlackmagicFusionCompPublisher-2.12.pkg)**
+is a signed and notarized installer for Apple Silicon Macs (M1 and later) running macOS 12 or later. Double-click it and it puts
 **Blackmagic Fusion Comp Publisher** in your Applications folder. It has Python and Qt inside, so
 there is nothing else to install. The [PDF guide](Blackmagic_Fusion_Comp_Publisher_Guide.pdf)
 explains how to use it, and every release is on the
@@ -63,14 +63,14 @@ You need Python 3.10 or later and PySide6.
 ```
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python3 cvt_fusion_comp_publisher_gui_v2.11.py
+.venv/bin/python3 cvt_fusion_comp_publisher_gui_v2.12.py
 ```
 
 The engine also runs on its own, with only the standard library:
 
 ```
-python3 cvt_fusion_comp_publisher_v2.11.py /path/to/Shots --dry-run
-python3 cvt_fusion_comp_publisher_v2.11.py --help
+python3 cvt_fusion_comp_publisher_v2.12.py /path/to/Shots --dry-run
+python3 cvt_fusion_comp_publisher_v2.12.py --help
 ```
 
 ## Build the Mac app
@@ -78,14 +78,18 @@ python3 cvt_fusion_comp_publisher_v2.11.py --help
 The installer is the Python files above, bundled with PyInstaller:
 
 ```
-pip install PySide6-Essentials pyinstaller
+pip install "PySide6-Essentials==6.8.3" pyinstaller
 pyinstaller --windowed --name "Blackmagic Fusion Comp Publisher" \
   --osx-bundle-identifier com.creativevideotips.fusioncomppublisher \
-  --add-data "cvt_fusion_comp_publisher_v2.11.py:." \
-  cvt_fusion_comp_publisher_gui_v2.11.py
+  --add-data "cvt_fusion_comp_publisher_v2.12.py:." \
+  cvt_fusion_comp_publisher_gui_v2.12.py
 ```
 
 Signing, notarizing and making a `.pkg` are your own steps, with your own Apple Developer ID.
+
+Build with a Python made for older macOS (the one from python.org, or a standalone build from
+`uv`) and PySide6 6.8, not Homebrew's Python or the newest PySide6. Those are compiled for the
+newest macOS, and an app built with them will not open on older Macs.
 
 ## Safety
 
